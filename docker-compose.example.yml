@@ -1,0 +1,88 @@
+# Пример Docker Compose для развертывания BIM Platform
+# Копируйте в docker-compose.yml и настройте переменные окружения
+
+version: '3.8'
+
+services:
+  # Основное веб-приложение
+  bim-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_CONVEX_URL=${CONVEX_URL}
+    depends_on:
+      - bim-api
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # API сервис для интеграций
+  bim-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - CONVEX_DEPLOYMENT=${CONVEX_DEPLOYMENT}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # Сервис обработки IFC файлов
+  bim-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.processor
+    environment:
+      - NODE_ENV=production
+      - CONVEX_DEPLOYMENT=${CONVEX_DEPLOYMENT}
+      - CONVEX_DEPLOY_KEY=${CONVEX_DEPLOY_KEY}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./processed:/app/processed
+    restart: unless-stopped
+
+  # Специализированный 3D-просмотрщик
+  bim-viewer:
+    build:
+      context: .
+      dockerfile: Dockerfile.viewer
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - THATOPEN_LICENSE=${THATOPEN_LICENSE}
+    volumes:
+      - ./processed:/app/models
+    restart: unless-stopped
+
+  # Nginx для проксирования и статики
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - bim-web
+      - bim-api
+      - bim-viewer
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  processed:
+  ssl:
+
+networks:
+  default:
+    name: bim-network
