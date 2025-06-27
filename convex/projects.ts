@@ -76,6 +76,11 @@ export const getProject = query({
       throw new Error("Не авторизован");
     }
 
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Проект не найден");
+    }
+
     // Проверяем доступ к проекту
     const membership = await ctx.db
       .query("projectMembers")
@@ -84,12 +89,11 @@ export const getProject = query({
       .first();
 
     if (!membership) {
+      // Если пользователь создатель проекта, даем доступ
+      if (project.createdBy === userId) {
+        return { ...project, userRole: "owner" };
+      }
       throw new Error("Нет доступа к проекту");
-    }
-
-    const project = await ctx.db.get(args.projectId);
-    if (!project) {
-      throw new Error("Проект не найден");
     }
 
     return { ...project, userRole: membership.role };
@@ -128,5 +132,40 @@ export const updateProjectStatus = mutation({
     await ctx.db.patch(args.projectId, {
       status: args.status,
     });
+  },
+});
+
+// Исправить отсутствующие записи в projectMembers
+export const fixProjectMemberships = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Не авторизован");
+
+    const userProjects = await ctx.db
+      .query("projects")
+      .withIndex("by_creator", (q) => q.eq("createdBy", userId))
+      .collect();
+
+    let fixed = 0;
+    for (const project of userProjects) {
+      const membership = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project", (q) => q.eq("projectId", project._id))
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .first();
+
+      if (!membership) {
+        await ctx.db.insert("projectMembers", {
+          projectId: project._id,
+          userId,
+          role: "owner",
+          permissions: ["read", "write", "admin"],
+        });
+        fixed++;
+      }
+    }
+
+    return { message: `Исправлено ${fixed} проектов` };
   },
 });

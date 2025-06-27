@@ -11,6 +11,7 @@ export function ProjectDashboard() {
   const navigate = useNavigate();
   
   const projects = useQuery(api.projects.getUserProjects);
+  const fixProjectMemberships = useMutation(api.projects.fixProjectMemberships);
 
   if (projects === undefined) {
     return (
@@ -29,12 +30,27 @@ export function ProjectDashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Мои проекты</h1>
           <p className="text-gray-600 mt-2">Управление BIM-проектами и зданиями</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Создать проект
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              try {
+                const result = await fixProjectMemberships();
+                alert(result.message);
+              } catch (error) {
+                console.error("Ошибка исправления:", error);
+              }
+            }}
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+          >
+            🔧 Исправить доступ
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Создать проект
+          </button>
+        </div>
       </div>
 
       <ProjectList 

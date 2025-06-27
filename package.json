@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"pnpm run dev:backend\" \"pnpm run dev:frontend\"",
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
+    "dev:backend": "convex dev",
     "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
   },
   "dependencies": {
@@ -33,8 +34,6 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "~10",
-    "concurrently": "^9.2.0",
-    "cross-env": "^7.0.3",
     "dotenv": "^16.4.7",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
